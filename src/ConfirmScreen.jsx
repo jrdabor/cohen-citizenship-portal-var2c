@@ -7,9 +7,10 @@ import { CheckIcon, PencilIcon, ArrowRight } from './Icons.jsx';
 function EditableField({ label, value, source, onChange, highlight, verify }) {
     const [editing, setEditing] = useState(false);
     const [val, setVal] = useState(value || '');
+    const [verified, setVerified] = useState(false);
     const needsInput = !value && !val;
 
-    const save = () => { setEditing(false); onChange(val); };
+    const save = () => { setEditing(false); setVerified(true); onChange(val); };
 
     return (
         <div style={{
@@ -39,7 +40,7 @@ function EditableField({ label, value, source, onChange, highlight, verify }) {
                         {needsInput && (
                             <span style={{ fontSize: 11, color: T.warn, fontWeight: 600, background: '#fff', padding: '2px 8px', borderRadius: 6, border: `1px solid ${T.warn}` }}>✎ Your input needed</span>
                         )}
-                        {verify && !needsInput && (
+                        {verify && !verified && !needsInput && (
                             <span style={{ fontSize: 11, color: T.warn, fontWeight: 500, background: T.warnBg, padding: '2px 8px', borderRadius: 6 }}>Please verify</span>
                         )}
                     </div>
