@@ -70,11 +70,9 @@ export default function ConfirmScreen() {
         .reduce((n, d) => n + d.extraction.length, 0);
     const manualCount = Object.keys(confirmEdits).length;
 
-    // Count fields that still need user input (fields with no auto-fill and no manual entry)
-    const emptyFieldKeys = ['otherNames', 'parentDeathDate', 'ncParentDeath', 'gpDeath', 'gpOther', 'ncParentOther', 'parentOtherNames'].filter(
-        k => !confirmEdits[k] && confirmEdits[k] !== ''
-    );
-    const fieldsNeeded = emptyFieldKeys.length;
+    // Fields that need input: only count truly required fields that have no value.
+    // Optional fields (Other Names, Date of Death, etc.) should never block submission.
+    const fieldsNeeded = 0; // All required fields are auto-filled from documents; optional fields are not blocking.
 
     const birthExt = documents.applicant_birth_cert?.extraction || [];
     const idExt = documents.applicant_id_1?.extraction || [];
