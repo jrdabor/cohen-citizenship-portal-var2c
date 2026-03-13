@@ -357,7 +357,7 @@ export default function IntakeScreen() {
                                 <div style={{ marginTop: 20, padding: '14px 18px', background: T.accentPale, borderRadius: T.radiusSm }}>
                                     <p style={{ fontSize: 14, color: T.accent, lineHeight: 1.6 }}>
                                         Based on what you've told us, you appear to be eligible for Canadian citizenship by descent through your <strong>{canadianParent || 'parent'}</strong>.
-                                        Here's what we'll need from you: <strong>{requiredDocCount} documents</strong>.
+                                        We'll need <strong>{requiredDocCount} documents</strong> to verify your chain — you can upload them at your own pace.
                                     </p>
                                 </div>
                             </div>
@@ -365,7 +365,6 @@ export default function IntakeScreen() {
                                 <button onClick={handleContinue} style={{ ...S.btnPrimary, display: 'flex', alignItems: 'center', gap: 8 }}>
                                     Continue to Your Application <ArrowRight size={18} />
                                 </button>
-                                <button style={{ ...S.btnSecondary }}>Save & Continue Later</button>
                             </div>
                         </div>
                     )}

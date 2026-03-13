@@ -155,15 +155,6 @@ export default function ReviewScreen() {
                 <p style={{ fontSize: 16, color: T.textSec, marginBottom: 32, lineHeight: 1.6 }}>
                     Everything looks great. The final step is to sign and mail your forms.
                 </p>
-                <div style={{ ...S.card, textAlign: 'left', marginBottom: 24 }}>
-                    <p style={{ fontSize: 13, fontWeight: 600, color: T.textMut, marginBottom: 12 }}>APPLICATION SUMMARY</p>
-                    <div style={{ fontSize: 14, color: T.text, lineHeight: 2 }}>
-                        <p><strong>Type:</strong> Citizenship by Descent</p>
-                        <p><strong>Chain:</strong> {state.chain.generationCount}-generation</p>
-                        <p><strong>Certificate:</strong> {state.client.certificateType}</p>
-                        <p><strong>Documents:</strong> {Object.keys(state.documents).length} submitted</p>
-                    </div>
-                </div>
                 <button onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'sign' })} style={{ ...S.btnPrimary, fontSize: 17, display: 'inline-flex', alignItems: 'center', gap: 8 }}>
                     Proceed to Sign & Submit <ArrowRight size={20} />
                 </button>
@@ -206,11 +197,17 @@ export default function ReviewScreen() {
                 ))}
 
                 <button
-                    onClick={() => dispatch({ type: 'SET_REVIEW', data: { status: 'checking' } })}
+                    onClick={() => allFlagsResolved && dispatch({ type: 'SET_REVIEW', data: { status: 'checking' } })}
                     disabled={!allFlagsResolved}
-                    style={{ ...S.btnPrimary, width: '100%', marginTop: 12, opacity: allFlagsResolved ? 1 : 0.5 }}
+                    style={{
+                        ...S.btnPrimary, width: '100%', marginTop: 12,
+                        opacity: allFlagsResolved ? 1 : 0.4,
+                        background: allFlagsResolved ? T.accent : '#999',
+                        cursor: allFlagsResolved ? 'pointer' : 'not-allowed',
+                        pointerEvents: allFlagsResolved ? 'auto' : 'none',
+                    }}
                 >
-                    Re-submit for Review
+                    {allFlagsResolved ? 'Re-submit for Review' : `Resolve all ${openFlags.length} flag${openFlags.length !== 1 ? 's' : ''} to continue`}
                 </button>
 
                 <CMMessagePanel />

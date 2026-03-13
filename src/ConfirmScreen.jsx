@@ -12,9 +12,16 @@ function EditableField({ label, value, source, onChange, highlight, verify }) {
     const save = () => { setEditing(false); onChange(val); };
 
     return (
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', padding: '12px 0', borderBottom: `1px solid ${T.bgWarm}` }}>
+        <div style={{
+            display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
+            padding: '12px 16px', borderBottom: `1px solid ${T.bgWarm}`,
+            background: needsInput ? T.warnBg : 'transparent',
+            marginLeft: needsInput ? -16 : 0, marginRight: needsInput ? -16 : 0,
+            borderRadius: needsInput ? 6 : 0,
+            transition: 'background 0.3s',
+        }}>
             <div style={{ flex: 1 }}>
-                <p style={{ fontSize: 13, color: T.textMut, marginBottom: 4 }}>{label}</p>
+                <p style={{ fontSize: 13, color: needsInput ? T.warn : T.textMut, marginBottom: 4, fontWeight: needsInput ? 600 : 400 }}>{label}</p>
                 {editing ? (
                     <div style={{ display: 'flex', gap: 8 }}>
                         <input value={val} onChange={e => setVal(e.target.value)} autoFocus onKeyDown={e => e.key === 'Enter' && save()}
@@ -30,7 +37,7 @@ function EditableField({ label, value, source, onChange, highlight, verify }) {
                             <span style={{ fontSize: 11, color: T.success, fontWeight: 600, background: T.successBg, padding: '2px 8px', borderRadius: 6 }}>✓ {source}</span>
                         )}
                         {needsInput && (
-                            <span style={{ fontSize: 11, color: T.warn, fontWeight: 600, background: T.warnBg, padding: '2px 8px', borderRadius: 6 }}>✎ Your input needed</span>
+                            <span style={{ fontSize: 11, color: T.warn, fontWeight: 600, background: '#fff', padding: '2px 8px', borderRadius: 6, border: `1px solid ${T.warn}` }}>✎ Your input needed</span>
                         )}
                         {verify && !needsInput && (
                             <span style={{ fontSize: 11, color: T.warn, fontWeight: 500, background: T.warnBg, padding: '2px 8px', borderRadius: 6 }}>Please verify</span>
@@ -62,6 +69,12 @@ export default function ConfirmScreen() {
         .reduce((n, d) => n + d.extraction.length, 0);
     const manualCount = Object.keys(confirmEdits).length;
 
+    // Count fields that still need user input (fields with no auto-fill and no manual entry)
+    const emptyFieldKeys = ['otherNames', 'parentDeathDate', 'ncParentDeath', 'gpDeath', 'gpOther', 'ncParentOther', 'parentOtherNames'].filter(
+        k => !confirmEdits[k] && confirmEdits[k] !== ''
+    );
+    const fieldsNeeded = emptyFieldKeys.length;
+
     const birthExt = documents.applicant_birth_cert?.extraction || [];
     const idExt = documents.applicant_id_1?.extraction || [];
     const parentExt = documents.parent_birth_cert?.extraction || [];
@@ -81,7 +94,7 @@ export default function ConfirmScreen() {
                     {autoFilled} fields auto-filled
                 </span>
                 <span style={{ fontSize: 13, color: T.warn, fontWeight: 600, background: T.warnBg, padding: '4px 12px', borderRadius: 8 }}>
-                    {Math.max(0, 8 - manualCount)} fields need your input
+                    {fieldsNeeded} field{fieldsNeeded !== 1 ? 's' : ''} need{fieldsNeeded === 1 ? 's' : ''} your input
                 </span>
             </div>
 
@@ -172,29 +185,40 @@ export default function ConfirmScreen() {
                 {[
                     { label: 'All required documents uploaded', ok: true },
                     { label: 'Chain of descent verified', ok: true },
-                    { label: 'Application details confirmed', ok: true },
+                    { label: 'Application details confirmed', ok: fieldsNeeded === 0 },
                 ].map((item, i) => (
                     <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0' }}>
-                        <div style={{ width: 20, height: 20, borderRadius: 4, background: T.successBg, border: `1px solid ${T.success}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <CheckIcon size={12} />
+                        <div style={{ width: 20, height: 20, borderRadius: 4, background: item.ok ? T.successBg : T.warnBg, border: `1px solid ${item.ok ? T.success : T.warn}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            {item.ok ? <CheckIcon size={12} /> : <span style={{ fontSize: 11, color: T.warn }}>—</span>}
                         </div>
-                        <span style={{ fontSize: 14, color: T.text }}>{item.label}</span>
+                        <span style={{ fontSize: 14, color: item.ok ? T.text : T.warn }}>{item.label}</span>
                     </div>
                 ))}
                 <p style={{ fontSize: 13, color: T.textMut, marginTop: 12 }}>
-                    {autoFilled} of {autoFilled + 8} fields auto-filled from your documents. {manualCount} fields completed by you.
+                    {autoFilled} of {autoFilled + fieldsNeeded + manualCount} fields auto-filled from your documents. {manualCount} fields completed by you.
                 </p>
             </div>
 
             <button onClick={() => {
                 dispatch({ type: 'SET_REVIEW', data: { status: 'checking', checkStep: 0 } });
                 dispatch({ type: 'SET_SCREEN', screen: 'review' });
-            }} style={{ ...S.btnPrimary, width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontSize: 17 }}>
+            }} disabled={fieldsNeeded > 0} style={{
+                ...S.btnPrimary, width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontSize: 17,
+                opacity: fieldsNeeded > 0 ? 0.5 : 1,
+                cursor: fieldsNeeded > 0 ? 'not-allowed' : 'pointer',
+            }}>
                 Submit for Review <ArrowRight size={20} />
             </button>
-            <p style={{ fontSize: 13, color: T.textMut, textAlign: 'center', marginTop: 12, lineHeight: 1.6 }}>
-                Your application will be reviewed by your Case Manager before anything is sent to the government. You will have a chance to make corrections if needed.
-            </p>
+            {fieldsNeeded > 0 && (
+                <p style={{ fontSize: 13, color: T.warn, textAlign: 'center', marginTop: 10 }}>
+                    Complete all required fields to continue.
+                </p>
+            )}
+            {fieldsNeeded === 0 && (
+                <p style={{ fontSize: 13, color: T.textMut, textAlign: 'center', marginTop: 12, lineHeight: 1.6 }}>
+                    Your application will be reviewed by your Case Manager before anything is sent to the government. You will have a chance to make corrections if needed.
+                </p>
+            )}
         </div>
     );
 }

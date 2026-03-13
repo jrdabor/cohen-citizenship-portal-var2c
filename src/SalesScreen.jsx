@@ -45,10 +45,23 @@ export default function SalesScreen() {
                     <p style={{ textAlign: 'center', color: T.textSec, fontSize: 15, marginBottom: 28 }}>Collect client information and payment</p>
 
                     {/* Line item */}
-                    <div style={{ background: T.accentPale, borderRadius: T.radiusSm, padding: '14px 18px', marginBottom: 28, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ background: T.accentPale, borderRadius: T.radiusSm, padding: '14px 18px', marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span style={{ fontSize: 14, fontWeight: 500, color: T.accent }}>Citizenship by Descent Application</span>
                         <span style={{ fontSize: 18, fontWeight: 700, color: T.accent }}>$1,500.00 USD</span>
                     </div>
+
+                    <button type="button" onClick={() => setForm({
+                        firstName: 'Iliana', lastName: 'Vasquez', email: 'iliana@email.com', phone: '(310) 555-0147',
+                        street: '1842 Sunset Boulevard', unit: 'Apt 4B', city: 'Los Angeles', provinceState: 'California', country: 'United States', postalCode: '90026',
+                        mailingSame: true, mailStreet: '', mailUnit: '', mailCity: '', mailState: '', mailCountry: '', mailPostal: '',
+                        cardNumber: '4242 4242 4242 4242', cardExpiry: '12 / 28', cardCvv: '123',
+                    })} style={{
+                        background: T.blueBg, color: T.blue, border: `1px solid ${T.blue}33`,
+                        borderRadius: 8, padding: '6px 14px', fontSize: 12, fontWeight: 600,
+                        cursor: 'pointer', marginBottom: 20, display: 'block', width: '100%',
+                    }}>
+                        ⚡ Autofill for Demo
+                    </button>
 
                     {/* Name */}
                     <div style={rowStyle}>

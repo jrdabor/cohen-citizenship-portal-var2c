@@ -5,6 +5,9 @@ import { getRequiredDocs, getMockExtraction } from './mockData.js';
 import { CheckIcon, UploadIcon, WarningIcon, SpinnerIcon, ArrowRight } from './Icons.jsx';
 
 function ChainViz({ nodes, documents, requiredDocs }) {
+    const [wasComplete, setWasComplete] = React.useState(false);
+    const [celebrateIndex, setCelebrateIndex] = React.useState(-1);
+
     const getNodeStatus = (personType) => {
         const personDocs = requiredDocs.filter(d => d.person === personType && d.required);
         if (personDocs.length === 0) return 'complete';
@@ -20,14 +23,28 @@ function ChainViz({ nodes, documents, requiredDocs }) {
         return getNodeStatus(pt) === 'complete';
     });
 
-    const statusColors = { empty: '#ccc', partial: T.warn, complete: T.success, flagged: T.error };
-    const statusBg = { empty: 'transparent', partial: T.warnBg, complete: T.successBg, flagged: T.errorBg };
+    // Chain completion celebration: sequential node pulses
+    React.useEffect(() => {
+        if (allComplete && !wasComplete) {
+            setWasComplete(true);
+            // Pulse nodes from top to bottom
+            nodes.forEach((_, i) => {
+                setTimeout(() => setCelebrateIndex(i), i * 200);
+            });
+            setTimeout(() => setCelebrateIndex(-1), nodes.length * 200 + 600);
+        } else if (!allComplete) {
+            setWasComplete(false);
+        }
+    }, [allComplete]);
 
     return (
         <div style={{ background: T.card, borderRadius: T.radius, border: `1px solid ${T.bgWarm}`, padding: '24px 20px', position: 'sticky', top: 90 }}>
             <p style={{ fontSize: 13, fontWeight: 600, color: T.textMut, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 20 }}>Chain of Descent</p>
             {allComplete && (
-                <div style={{ background: T.successBg, border: `1px solid ${T.success}`, borderRadius: T.radiusSm, padding: '12px 16px', marginBottom: 16, textAlign: 'center', animation: 'celebrate 0.6s ease' }}>
+                <div className="chain-verified-banner" style={{
+                    background: T.successBg, border: `1.5px solid ${T.success}`,
+                    borderRadius: T.radiusSm, padding: '12px 16px', marginBottom: 16, textAlign: 'center',
+                }}>
                     <p style={{ fontSize: 14, fontWeight: 700, color: T.success }}>✓ Your chain of descent is verified!</p>
                 </div>
             )}
@@ -36,37 +53,59 @@ function ChainViz({ nodes, documents, requiredDocs }) {
                 const status = getNodeStatus(pt);
                 const personDocList = requiredDocs.filter(d => d.person === pt && d.required);
                 const uploadedCount = personDocList.filter(d => documents[d.id]).length;
+                const isCelebrating = celebrateIndex === i;
+                const prevStatus = i > 0 ? getNodeStatus(personMap[nodes[i - 1].id] || nodes[i - 1].id) : null;
+                const connectorSolid = prevStatus === 'complete' && status === 'complete';
+
                 return (
                     <div key={node.id}>
                         {i > 0 && (
-                            <div style={{ width: 2, height: 20, marginLeft: 16, background: (getNodeStatus(personMap[nodes[i - 1].id] || nodes[i - 1].id) === 'complete' && status === 'complete') ? T.success : '#ddd', transition: 'background 0.5s' }} />
+                            <div style={{
+                                width: connectorSolid ? 3 : 2, height: 24, marginLeft: 16,
+                                background: connectorSolid ? T.success : 'transparent',
+                                borderLeft: connectorSolid ? 'none' : `2px dashed #ccc`,
+                                transition: 'all 0.5s ease',
+                            }} />
                         )}
                         <div style={{
                             padding: '14px 16px', borderRadius: T.radiusSm,
-                            border: `2px solid ${statusColors[status]}`,
-                            background: statusBg[status],
-                            borderStyle: status === 'empty' ? 'dashed' : 'solid',
-                            transition: 'all 0.3s',
+                            border: status === 'empty' ? `2px dashed #ccc` : status === 'complete' ? `2px solid ${T.success}` : `2px solid ${T.warn}`,
+                            background: status === 'complete' ? T.successBg : status === 'partial' ? T.warnBg : 'transparent',
+                            transition: 'all 0.4s ease',
+                            transform: isCelebrating ? 'scale(1.03)' : 'scale(1)',
+                            boxShadow: isCelebrating ? `0 0 12px rgba(26,125,70,0.25)` : status === 'complete' ? `0 1px 4px rgba(26,125,70,0.08)` : 'none',
                         }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-                                <div style={{ width: 24, height: 24, borderRadius: '50%', border: `2px solid ${statusColors[status]}`, background: status === 'complete' ? T.success : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                    {status === 'complete' && <CheckIcon size={12} color="#fff" />}
+                                <div style={{
+                                    width: 28, height: 28, borderRadius: '50%',
+                                    border: status === 'complete' ? `2.5px solid ${T.success}` : status === 'partial' ? `2.5px solid ${T.warn}` : `2px dashed #ccc`,
+                                    background: status === 'complete' ? T.success : 'transparent',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    transition: 'all 0.3s',
+                                }}>
+                                    {status === 'complete' && <CheckIcon size={14} color="#fff" />}
+                                    {status === 'partial' && <span style={{ fontSize: 10, fontWeight: 700, color: T.warn }}>…</span>}
                                 </div>
                                 <div style={{ flex: 1 }}>
-                                    <p style={{ fontWeight: 700, fontSize: 14 }}>{node.label}</p>
-                                    <p style={{ fontSize: 12, color: T.textSec }}>{node.basis}</p>
+                                    <p style={{ fontWeight: 700, fontSize: 14, color: status === 'empty' ? T.textMut : T.text }}>{node.label}</p>
+                                    <p style={{ fontSize: 12, color: status === 'complete' ? T.success : T.textSec, fontWeight: status === 'complete' ? 500 : 400 }}>{node.basis}</p>
                                 </div>
                             </div>
                             {personDocList.length > 0 && (
-                                <div style={{ marginLeft: 34 }}>
-                                    <div style={{ height: 4, background: '#eee', borderRadius: 2, marginTop: 4 }}>
-                                        <div style={{ height: 4, background: statusColors[status], borderRadius: 2, width: `${(uploadedCount / personDocList.length) * 100}%`, transition: 'width 0.5s' }} />
+                                <div style={{ marginLeft: 38 }}>
+                                    <div style={{ height: 5, background: status === 'empty' ? '#eee' : `${T.bgWarm}`, borderRadius: 3, marginTop: 4 }}>
+                                        <div style={{
+                                            height: 5, borderRadius: 3,
+                                            width: `${(uploadedCount / personDocList.length) * 100}%`,
+                                            background: status === 'complete' ? T.success : `linear-gradient(90deg, ${T.warn}, ${T.warn})`,
+                                            transition: 'width 0.5s ease',
+                                        }} />
                                     </div>
-                                    <p style={{ fontSize: 11, color: T.textMut, marginTop: 4 }}>{uploadedCount}/{personDocList.length} docs</p>
+                                    <p style={{ fontSize: 11, color: status === 'complete' ? T.success : T.textMut, marginTop: 4, fontWeight: status === 'complete' ? 600 : 400 }}>{uploadedCount}/{personDocList.length} docs</p>
                                 </div>
                             )}
                             {node.isAnchor && status === 'complete' && (
-                                <p style={{ marginTop: 6, marginLeft: 34, fontSize: 11, color: T.success, fontWeight: 600 }}>✓ Anchor</p>
+                                <p style={{ marginTop: 6, marginLeft: 38, fontSize: 11, color: T.success, fontWeight: 700, letterSpacing: 0.5 }}>✓ ANCHOR — Born in Canada</p>
                             )}
                         </div>
                     </div>
@@ -184,9 +223,9 @@ export default function GatherProofScreen() {
     };
 
     const personGroups = [
-        { person: 'grandparent', title: 'About Your Grandparent', icon: '👵' },
-        { person: 'parent', title: `About Your ${intake.canadianParent === 'mother' ? 'Mother' : intake.canadianParent === 'father' ? 'Father' : 'Canadian Parent'}`, icon: '👤' },
         { person: 'you', title: 'About You', icon: '🙋' },
+        { person: 'parent', title: `About Your ${intake.canadianParent === 'mother' ? 'Mother' : intake.canadianParent === 'father' ? 'Father' : 'Canadian Parent'}`, icon: '👤' },
+        { person: 'grandparent', title: 'About Your Grandparent', icon: '👵' },
     ].filter(g => requiredDocs.some(d => d.person === g.person));
 
     return (
@@ -264,9 +303,9 @@ export default function GatherProofScreen() {
                     <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
                         <span style={{ fontSize: 24, lineHeight: 1 }}>📂</span>
                         <div>
-                            <p style={{ fontWeight: 600, fontSize: 15, color: T.text, marginBottom: 6 }}>Missing a document?</p>
+                            <p style={{ fontWeight: 600, fontSize: 15, color: T.text, marginBottom: 6 }}>Having trouble tracking down a document?</p>
                             <p style={{ fontSize: 14, color: T.textSec, lineHeight: 1.6, marginBottom: 14 }}>
-                                Don't have everything right now? No problem — save your progress and come back anytime. We're building a document retrieval service that will locate records on your behalf.
+                                Locating old birth certificates, citizenship records, or vital documents — especially from decades ago — can be challenging. We're building a document retrieval service to do the heavy lifting for you.
                             </p>
                             {joinedWaitlist ? (
                                 <span style={{ fontSize: 13, color: T.success, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}><CheckIcon size={14} /> You're on the waitlist!</span>

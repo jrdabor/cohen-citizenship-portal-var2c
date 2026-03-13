@@ -22,11 +22,14 @@ const STEPS = [
 function StepBar() {
   const { state, dispatch } = useApp();
   const { screen, intake, chain, review } = state;
+  const [showBackModal, setShowBackModal] = useState(false);
+  const [pendingNav, setPendingNav] = useState(null);
 
   const stepOrder = STEPS.map(s => s.id);
   const currentIdx = stepOrder.indexOf(screen);
 
   const canClick = (stepId) => {
+    if (state.mailedForms) return false; // Lock all nav after mailing
     if (screen === 'intake') return false; // No clicking during intake
     if (stepId === 'intake') return false; // Never clickable after completion
     if (screen === 'review' && review.status === 'waiting') return false; // Can't navigate during waiting
@@ -56,47 +59,63 @@ function StepBar() {
 
     // Back-navigation warning from Confirm to Gather
     if (screen === 'confirm' && stepId === 'gather') {
-      const ok = window.confirm(
-        'Going back to upload documents may update fields on your application. Any manual edits you\'ve made will be preserved, but auto-filled fields may change if you upload new documents. Continue?'
-      );
-      if (!ok) return;
+      setPendingNav(stepId);
+      setShowBackModal(true);
+      return;
     }
 
     dispatch({ type: 'SET_SCREEN', screen: stepId });
   };
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-      {STEPS.map((step, i) => {
-        const isActive = screen === step.id;
-        const isDone = currentIdx > i || (step.id === 'intake' && intake.isComplete);
-        const clickable = canClick(step.id);
+    <>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+        {STEPS.map((step, i) => {
+          const isActive = screen === step.id;
+          const isDone = currentIdx > i || (step.id === 'intake' && intake.isComplete) || state.mailedForms;
+          const clickable = canClick(step.id);
 
-        return (
-          <React.Fragment key={step.id}>
-            {i > 0 && <div style={{ width: 24, height: 1, background: isDone ? T.success : '#ddd' }} />}
-            <button
-              onClick={() => handleStepClick(step.id)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 6,
-                padding: '6px 14px', borderRadius: 20,
-                border: isActive ? `2px solid ${T.accent}` : `1px solid ${isDone ? T.success : '#ddd'}`,
-                background: isActive ? T.accentPale : isDone ? T.successBg : 'transparent',
-                color: isActive ? T.accent : isDone ? T.success : T.textMut,
-                fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap',
-                cursor: clickable ? 'pointer' : 'default',
-                opacity: clickable || isActive ? 1 : 0.6,
-                transition: 'all 0.2s',
-              }}
-            >
-              {isDone && !isActive && <span style={{ fontSize: 11 }}>✓</span>}
-              <span style={{ fontSize: 11, fontWeight: 700, width: 16, height: 16, borderRadius: '50%', background: isActive ? T.accent : 'transparent', color: isActive ? '#fff' : 'inherit', display: isDone && !isActive ? 'none' : 'flex', alignItems: 'center', justifyContent: 'center' }}>{i + 1}</span>
-              {step.label}
-            </button>
-          </React.Fragment>
-        );
-      })}
-    </div>
+          return (
+            <React.Fragment key={step.id}>
+              {i > 0 && <div style={{ width: 24, height: 1, background: isDone ? T.success : '#ddd' }} />}
+              <button
+                onClick={() => handleStepClick(step.id)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  padding: '6px 14px', borderRadius: 20,
+                  border: isActive ? `2px solid ${T.accent}` : `1px solid ${isDone ? T.success : '#ddd'}`,
+                  background: isActive ? T.accentPale : isDone ? T.successBg : 'transparent',
+                  color: isActive ? T.accent : isDone ? T.success : T.textMut,
+                  fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap',
+                  cursor: clickable ? 'pointer' : 'default',
+                  opacity: clickable || isActive ? 1 : 0.6,
+                  transition: 'all 0.2s',
+                }}
+              >
+                {isDone && !isActive && <span style={{ fontSize: 11 }}>✓</span>}
+                <span style={{ fontSize: 11, fontWeight: 700, width: 16, height: 16, borderRadius: '50%', background: isActive ? T.accent : 'transparent', color: isActive ? '#fff' : 'inherit', display: isDone && !isActive ? 'none' : 'flex', alignItems: 'center', justifyContent: 'center' }}>{i + 1}</span>
+                {step.label}
+              </button>
+            </React.Fragment>
+          );
+        })}
+      </div>
+
+      {showBackModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={() => setShowBackModal(false)}>
+          <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: T.radius, padding: '32px 36px', maxWidth: 460, width: '90%', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }} className="animate-fade-in">
+            <h3 style={{ ...S.h2, fontSize: 22, marginBottom: 12 }}>Go back to documents?</h3>
+            <p style={{ fontSize: 14, color: T.textSec, lineHeight: 1.7, marginBottom: 24 }}>
+              Going back to upload documents may update fields on your application. Any manual edits you've made will be preserved, but auto-filled fields may change if you upload new documents.
+            </p>
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+              <button onClick={() => setShowBackModal(false)} style={{ ...S.btnSecondary, padding: '10px 24px' }}>Stay Here</button>
+              <button onClick={() => { setShowBackModal(false); dispatch({ type: 'SET_SCREEN', screen: pendingNav }); }} style={{ ...S.btnPrimary, padding: '10px 24px' }}>Go Back</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
