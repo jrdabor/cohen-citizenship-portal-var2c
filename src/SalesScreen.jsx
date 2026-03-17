@@ -10,12 +10,33 @@ export default function SalesScreen() {
         mailingSame: true, mailStreet: '', mailUnit: '', mailCity: '', mailState: '', mailCountry: '', mailPostal: '',
         cardNumber: '', cardExpiry: '', cardCvv: '',
     });
+    const [additionalCount, setAdditionalCount] = useState(0);
 
     const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
     const canSubmit = form.firstName && form.lastName && form.email && form.phone && form.street && form.city && form.provinceState && form.postalCode;
 
+    const totalApplicants = 1 + additionalCount;
+    const totalPrice = totalApplicants * 1500;
+
     const handleSubmit = (e) => {
         e.preventDefault();
+
+        // Build primary-only applicants array; additional applicant details collected at Intake
+        const applicants = [
+            {
+                id: 'primary',
+                firstName: form.firstName,
+                lastName: form.lastName,
+                dob: '',
+                relationship: 'self',
+                isMinor: false,
+                documents: {},
+                confirmEdits: {},
+                reviewFlags: [],
+                status: 'gather',
+            },
+        ];
+
         dispatch({
             type: 'SET_CLIENT',
             data: {
@@ -25,7 +46,18 @@ export default function SalesScreen() {
                 mailingSameAsHome: form.mailingSame,
             },
         });
+        dispatch({ type: 'SET_APPLICANTS', data: applicants });
+        dispatch({ type: 'SET_ADDITIONAL_COUNT', count: additionalCount });
         dispatch({ type: 'SET_SCREEN', screen: 'welcome' });
+    };
+
+    const handleAutofill = () => {
+        setForm({
+            firstName: 'Iliana', lastName: 'Vasquez', email: 'iliana@email.com', phone: '(310) 555-0147',
+            street: '1842 Sunset Boulevard', unit: 'Apt 4B', city: 'Los Angeles', provinceState: 'California', country: 'United States', postalCode: '90026',
+            mailingSame: true, mailStreet: '', mailUnit: '', mailCity: '', mailState: '', mailCountry: '', mailPostal: '',
+            cardNumber: '4242 4242 4242 4242', cardExpiry: '12 / 28', cardCvv: '123',
+        });
     };
 
     const inputStyle = { ...S.inputBase, marginBottom: 0 };
@@ -34,7 +66,7 @@ export default function SalesScreen() {
 
     return (
         <div style={{ minHeight: '100vh', background: T.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 32 }}>
-            <form onSubmit={handleSubmit} style={{ width: '100%', maxWidth: 500 }} className="animate-fade-in-up">
+            <form onSubmit={handleSubmit} style={{ width: '100%', maxWidth: 540 }} className="animate-fade-in-up">
                 {/* Agent badge */}
                 <div style={{ textAlign: 'center', marginBottom: 24 }}>
                     <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase', color: T.textMut, background: T.bgWarm, padding: '6px 16px', borderRadius: 20 }}>Sales Agent View</span>
@@ -45,23 +77,28 @@ export default function SalesScreen() {
                     <p style={{ textAlign: 'center', color: T.textSec, fontSize: 15, marginBottom: 28 }}>Collect client information and payment</p>
 
                     {/* Line item */}
-                    <div style={{ background: T.accentPale, borderRadius: T.radiusSm, padding: '14px 18px', marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontSize: 14, fontWeight: 500, color: T.accent }}>Citizenship by Descent Application</span>
-                        <span style={{ fontSize: 18, fontWeight: 700, color: T.accent }}>$1,500.00 USD</span>
+                    <div style={{ background: T.accentPale, borderRadius: T.radiusSm, padding: '14px 18px', marginBottom: 16 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ fontSize: 14, fontWeight: 500, color: T.accent }}>Citizenship by Descent Application</span>
+                            <span style={{ fontSize: 18, fontWeight: 700, color: T.accent }}>${totalPrice.toLocaleString()}.00 USD</span>
+                        </div>
+                        {totalApplicants > 1 && (
+                            <p style={{ fontSize: 12, color: T.accentMid, marginTop: 4 }}>{totalApplicants} applicants × $1,500.00</p>
+                        )}
                     </div>
 
-                    <button type="button" onClick={() => setForm({
-                        firstName: 'Iliana', lastName: 'Vasquez', email: 'iliana@email.com', phone: '(310) 555-0147',
-                        street: '1842 Sunset Boulevard', unit: 'Apt 4B', city: 'Los Angeles', provinceState: 'California', country: 'United States', postalCode: '90026',
-                        mailingSame: true, mailStreet: '', mailUnit: '', mailCity: '', mailState: '', mailCountry: '', mailPostal: '',
-                        cardNumber: '4242 4242 4242 4242', cardExpiry: '12 / 28', cardCvv: '123',
-                    })} style={{
+                    <button type="button" onClick={handleAutofill} style={{
                         background: T.blueBg, color: T.blue, border: `1px solid ${T.blue}33`,
                         borderRadius: 8, padding: '6px 14px', fontSize: 12, fontWeight: 600,
                         cursor: 'pointer', marginBottom: 20, display: 'block', width: '100%',
                     }}>
                         ⚡ Autofill for Demo
                     </button>
+
+                    {/* Primary Applicant Header */}
+                    <div style={{ marginBottom: 12 }}>
+                        <p style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: T.textMut }}>Primary Applicant</p>
+                    </div>
 
                     {/* Name */}
                     <div style={rowStyle}>
@@ -142,6 +179,26 @@ export default function SalesScreen() {
                         </div>
                     )}
 
+                    {/* Additional Applicants — count only */}
+                    <div style={{ borderTop: `1px solid ${T.bgWarm}`, paddingTop: 24, marginBottom: 24 }}>
+                        <p style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: T.textMut, marginBottom: 8 }}>Additional Applicants</p>
+                        <p style={{ fontSize: 14, color: T.textSec, marginBottom: 16 }}>Will anyone else be applying with you?</p>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                            <label style={{ fontSize: 14, color: T.text, fontWeight: 500 }}>Number of additional applicants:</label>
+                            <select
+                                value={additionalCount}
+                                onChange={e => setAdditionalCount(Number(e.target.value))}
+                                style={{ ...inputStyle, width: 70, cursor: 'pointer', textAlign: 'center' }}
+                            >
+                                <option value={0}>0</option>
+                                <option value={1}>1</option>
+                                <option value={2}>2</option>
+                                <option value={3}>3</option>
+                            </select>
+                        </div>
+                    </div>
+
                     {/* Payment */}
                     <div style={{ marginBottom: 4 }}>
                         <label style={{ ...S.label, fontSize: 14, fontWeight: 700, color: T.text, marginBottom: 12 }}>Payment Information</label>
@@ -162,7 +219,7 @@ export default function SalesScreen() {
                     </div>
 
                     <button type="submit" disabled={!canSubmit} style={{ ...S.btnPrimary, width: '100%', marginTop: 8, opacity: canSubmit ? 1 : 0.5 }}>
-                        Pay $1,500.00 USD
+                        Pay ${totalPrice.toLocaleString()}.00 USD
                     </button>
                 </div>
             </form>

@@ -143,6 +143,7 @@ export const INTAKE_QUESTIONS = [
     },
 ];
 
+// Original single-applicant doc list (unchanged for backward compat)
 export function getRequiredDocs(genCount, hasNameChange) {
     const docs = [
         { id: 'applicant_birth_cert', label: 'Your birth certificate', desc: 'Certified copy of your birth certificate', person: 'you', required: true },
@@ -163,6 +164,32 @@ export function getRequiredDocs(genCount, hasNameChange) {
     return docs;
 }
 
+// Family mode: shared docs (parent/grandparent docs uploaded once for the family)
+export function getSharedDocs(genCount) {
+    const docs = [
+        { id: 'parent_birth_cert', label: "Parent's birth certificate", desc: "Certified copy of your Canadian parent's birth certificate", person: 'parent', required: true },
+        { id: 'parent_marriage_cert', label: "Parents' marriage certificate", desc: 'If parents were married', person: 'parent', required: false },
+    ];
+    if (genCount >= 2) {
+        docs.push(
+            { id: 'grandparent_birth_cert', label: "Grandparent's birth certificate", desc: "Certified copy of your grandparent's birth certificate or citizenship certificate", person: 'grandparent', required: true },
+            { id: 'grandparent_marriage_cert', label: "Grandparent's marriage certificate", desc: 'If applicable', person: 'grandparent', required: false },
+        );
+    }
+    return docs;
+}
+
+// Family mode: per-applicant docs (each person needs their own)
+export function getApplicantDocs(applicant) {
+    const isMinor = applicant?.isMinor;
+    return [
+        { id: 'birth_cert', label: isMinor ? 'Birth certificate' : 'Your birth certificate', desc: 'Certified copy of birth certificate', person: isMinor ? 'minor' : 'you', required: true },
+        { id: 'id_1', label: 'Photo ID (primary)', desc: "Driver's license or government-issued photo ID", person: isMinor ? 'minor' : 'you', required: true },
+        { id: 'id_2', label: 'Photo ID (secondary)', desc: 'Passport or second government-issued ID', person: isMinor ? 'minor' : 'you', required: true },
+    ];
+}
+
+// Original single-applicant mock extraction (unchanged)
 export function getMockExtraction(docId) {
     const P = MOCK_PERSONA;
     const map = {
@@ -214,6 +241,41 @@ export function getMockExtraction(docId) {
         name_change_doc: [
             { label: 'Previous Name', value: 'N/A', confidence: 'medium' },
             { label: 'New Name', value: 'N/A', confidence: 'medium' },
+        ],
+    };
+    return map[docId] || [];
+}
+
+// Family mode: per-applicant mock extraction (uses applicant's own name/DOB)
+export function getMockExtractionForApplicant(docId, applicant) {
+    if (!applicant) return [];
+    const P = MOCK_PERSONA;
+    const firstName = applicant.firstName || 'Applicant';
+    const lastName = applicant.lastName || 'Unknown';
+    const dob = applicant.dob || '';
+
+    const map = {
+        birth_cert: [
+            { label: 'Surname', value: lastName, confidence: 'high' },
+            { label: 'Given Name(s)', value: firstName, confidence: 'high' },
+            { label: 'Date of Birth', value: dob, confidence: 'high' },
+            { label: 'Place of Birth', value: applicant.isMinor ? 'Los Angeles, California' : 'Los Angeles, California', confidence: 'high' },
+            { label: 'Sex', value: applicant.isMinor ? 'F' : (firstName === 'Diego' ? 'M' : 'F'), confidence: 'high' },
+            { label: 'Parent 1', value: P.canadianParent.fullName, confidence: 'medium' },
+            { label: 'Parent 2', value: P.nonCanadianParent.fullName, confidence: 'medium' },
+        ],
+        id_1: [
+            { label: 'Full Name', value: `${firstName} ${lastName}`, confidence: 'high' },
+            { label: 'Date of Birth', value: dob, confidence: 'high' },
+            { label: 'Height', value: applicant.isMinor ? "4'11\"" : (firstName === 'Diego' ? "5'10\"" : "5'7\""), confidence: 'high' },
+            { label: 'Eye Color', value: 'Brown', confidence: 'high' },
+            { label: 'Expiry', value: '2028-06-15', confidence: 'high' },
+        ],
+        id_2: [
+            { label: 'Full Name', value: `${firstName} ${lastName}`, confidence: 'high' },
+            { label: 'Date of Birth', value: dob, confidence: 'high' },
+            { label: 'Nationality', value: 'United States', confidence: 'high' },
+            { label: 'Expiry', value: '2029-06-20', confidence: 'high' },
         ],
     };
     return map[docId] || [];

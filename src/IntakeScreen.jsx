@@ -1,8 +1,18 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useApp } from './AppContext.jsx';
 import { T, S } from './tokens.js';
-import { INTAKE_QUESTIONS, getRequiredDocs } from './mockData.js';
+import { INTAKE_QUESTIONS, getRequiredDocs, getSharedDocs, getApplicantDocs } from './mockData.js';
 import { CheckIcon, ArrowRight } from './Icons.jsx';
+
+function isMinorFromDob(dob) {
+    if (!dob) return false;
+    const d = new Date(dob);
+    const today = new Date();
+    let age = today.getFullYear() - d.getFullYear();
+    const m = today.getMonth() - d.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < d.getDate())) age--;
+    return age < 18;
+}
 
 // Chain Sidebar (right column)
 function ChainSidebar({ nodes, isComplete }) {
@@ -64,9 +74,111 @@ function EligibilityCallout() {
     );
 }
 
+/* ── Applicant Details Form (shown after chain questions for family flows) ── */
+function ApplicantDetailsForm({ count, onSubmit, primaryLastName }) {
+    const emptyApplicant = () => ({ firstName: '', lastName: primaryLastName || '', dob: '', relationship: 'child' });
+    const [applicants, setApplicants] = useState(() => Array.from({ length: count }, emptyApplicant));
+
+    const update = (idx, field, value) => {
+        setApplicants(a => a.map((x, i) => i === idx ? { ...x, [field]: value } : x));
+    };
+
+    const allFilled = applicants.every(a => a.firstName && a.lastName && a.dob);
+
+    const handleAutofill = () => {
+        const demoData = [
+            { firstName: 'Diego', lastName: primaryLastName || 'Vasquez', dob: '1995-07-22', relationship: 'sibling' },
+            { firstName: 'Sofia', lastName: primaryLastName || 'Vasquez', dob: '2012-11-08', relationship: 'child' },
+            { firstName: 'Marco', lastName: primaryLastName || 'Vasquez', dob: '1990-06-15', relationship: 'spouse' },
+        ];
+        setApplicants(prev =>
+            prev.map((_, i) => i < demoData.length ? demoData[i] : emptyApplicant())
+        );
+    };
+
+    return (
+        <div className="animate-fade-in-up" style={{ marginTop: 20, marginBottom: 20 }}>
+            <div style={{
+                background: T.card, border: `1px solid ${T.bgWarm}`, borderRadius: T.radius,
+                padding: '28px 28px 20px', boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
+            }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+                    <div>
+                        <p style={{ fontSize: 16, fontWeight: 600, color: T.text, marginBottom: 4 }}>
+                            You mentioned there {count === 1 ? 'is 1 additional applicant' : `are ${count} additional applicants`}. Let's get their details.
+                        </p>
+                        <p style={{ fontSize: 13, color: T.textMut }}>We'll collect documents for each applicant in the next step.</p>
+                    </div>
+                    <button type="button" onClick={handleAutofill} style={{
+                        background: T.blueBg, color: T.blue, border: `1px solid ${T.blue}33`,
+                        borderRadius: 8, padding: '6px 14px', fontSize: 12, fontWeight: 600,
+                        cursor: 'pointer', whiteSpace: 'nowrap',
+                    }}>
+                        ⚡ Autofill
+                    </button>
+                </div>
+
+                {applicants.map((a, i) => (
+                    <div key={i} style={{
+                        borderTop: `1px solid ${T.bgWarm}`, paddingTop: 20, marginTop: i > 0 ? 12 : 0, marginBottom: 16,
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                            <p style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: T.textMut }}>
+                                Applicant {i + 2}
+                            </p>
+                            {a.dob && isMinorFromDob(a.dob) && (
+                                <span style={{ fontSize: 11, fontWeight: 700, color: T.maple, background: `${T.maple}14`, padding: '2px 8px', borderRadius: 4 }}>Minor</span>
+                            )}
+                        </div>
+                        <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
+                            <div style={{ flex: 1 }}>
+                                <label style={S.label}>First Name *</label>
+                                <input style={S.inputBase} value={a.firstName} onChange={e => update(i, 'firstName', e.target.value)} placeholder="First name" />
+                            </div>
+                            <div style={{ flex: 1 }}>
+                                <label style={S.label}>Last Name *</label>
+                                <input style={S.inputBase} value={a.lastName} onChange={e => update(i, 'lastName', e.target.value)} placeholder="Last name" />
+                            </div>
+                        </div>
+                        <div style={{ display: 'flex', gap: 12 }}>
+                            <div style={{ flex: 1 }}>
+                                <label style={S.label}>Date of Birth * (YYYY-MM-DD)</label>
+                                <input type="date" style={S.inputBase} value={a.dob} onChange={e => update(i, 'dob', e.target.value)} />
+                            </div>
+                            <div style={{ flex: 1 }}>
+                                <label style={S.label}>Relationship</label>
+                                <select style={{ ...S.inputBase, cursor: 'pointer' }} value={a.relationship} onChange={e => update(i, 'relationship', e.target.value)}>
+                                    <option value="child">Child</option>
+                                    <option value="sibling">Sibling</option>
+                                    <option value="spouse">Spouse</option>
+                                    <option value="other">Other</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                ))}
+
+                <button
+                    onClick={() => onSubmit(applicants)}
+                    disabled={!allFilled}
+                    style={{
+                        ...S.btnPrimary, width: '100%', marginTop: 8, opacity: allFilled ? 1 : 0.5,
+                        cursor: allFilled ? 'pointer' : 'not-allowed',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                    }}
+                >
+                    Continue <ArrowRight size={16} />
+                </button>
+            </div>
+        </div>
+    );
+}
+
 export default function IntakeScreen() {
     const { state, dispatch } = useApp();
-    const { intake, client } = state;
+    const { intake, client, applicants, additionalApplicantCount } = state;
+    const isFamily = applicants.length > 1;
+    const hasAdditional = additionalApplicantCount > 0;
     const [isTyping, setIsTyping] = useState(false);
     const [chainNodes, setChainNodes] = useState([]);
     const [showEligibility, setShowEligibility] = useState(false);
@@ -74,6 +186,7 @@ export default function IntakeScreen() {
     const [questionQueue, setQuestionQueue] = useState([]);
     const [showFollowUp, setShowFollowUp] = useState(false);
     const [followUpText, setFollowUpText] = useState('');
+    const [showApplicantForm, setShowApplicantForm] = useState(false); // new: show applicant details form
     const [showSummary, setShowSummary] = useState(false);
     const [genCount, setGenCount] = useState(0);
     const [canadianParent, setCanadianParent] = useState('');
@@ -129,7 +242,15 @@ export default function IntakeScreen() {
 
     const showQuestion = (qId) => {
         const q = INTAKE_QUESTIONS.find(x => x.id === qId);
-        if (!q) { setShowSummary(true); return; }
+        if (!q) {
+            // Chain questions done — show applicant form if family, otherwise summary
+            if (hasAdditional) {
+                setShowApplicantForm(true);
+            } else {
+                setShowSummary(true);
+            }
+            return;
+        }
         setIsTyping(true);
         scrollToBottom();
         setTimeout(() => {
@@ -158,7 +279,11 @@ export default function IntakeScreen() {
         // Next question
         const nextId = getNextQuestionId(q.id, option.value);
         if (!nextId) {
-            setTimeout(() => setShowSummary(true), 500);
+            if (hasAdditional) {
+                setTimeout(() => setShowApplicantForm(true), 500);
+            } else {
+                setTimeout(() => setShowSummary(true), 500);
+            }
             scrollToBottom();
         } else {
             setTimeout(() => showQuestion(nextId), 300);
@@ -180,7 +305,11 @@ export default function IntakeScreen() {
         setFollowUpText('');
         const nextId = getNextQuestionId(lastAnswer.qId, lastAnswer.value);
         if (!nextId) {
-            setTimeout(() => setShowSummary(true), 500);
+            if (hasAdditional) {
+                setTimeout(() => setShowApplicantForm(true), 500);
+            } else {
+                setTimeout(() => setShowSummary(true), 500);
+            }
         } else {
             setTimeout(() => showQuestion(nextId), 300);
         }
@@ -236,6 +365,34 @@ export default function IntakeScreen() {
         }
     };
 
+    // Handle applicant details submission from the form
+    const handleApplicantDetailsSubmit = (applicantDetails) => {
+        // Build the full applicants array: primary + additional
+        const fullApplicants = [
+            applicants[0] || {
+                id: 'primary', firstName: client.firstName, lastName: client.lastName,
+                dob: '', relationship: 'self', isMinor: false, documents: {},
+                confirmEdits: {}, reviewFlags: [], status: 'gather',
+            },
+            ...applicantDetails.map((a, i) => ({
+                id: `applicant_${i + 2}`,
+                firstName: a.firstName,
+                lastName: a.lastName,
+                dob: a.dob,
+                relationship: a.relationship,
+                isMinor: isMinorFromDob(a.dob),
+                documents: {},
+                confirmEdits: {},
+                reviewFlags: [],
+                status: 'gather',
+            })),
+        ];
+        dispatch({ type: 'SET_APPLICANTS', data: fullApplicants });
+        setShowApplicantForm(false);
+        setShowSummary(true);
+        scrollToBottom();
+    };
+
     const handleContinue = () => {
         // Store intake results
         const finalGenCount = genCount || 1;
@@ -252,13 +409,21 @@ export default function IntakeScreen() {
 
     const requiredDocCount = getRequiredDocs(genCount || 1, hasNameChange).filter(d => d.required).length;
 
+    // Recalculate isFamily after potential applicant form submission
+    const currentIsFamily = applicants.length > 1;
+
+    // Family doc count: shared docs + per-applicant docs × number of applicants
+    const familyDocCount = currentIsFamily
+        ? getSharedDocs(genCount || 1).filter(d => d.required).length + getApplicantDocs().filter(d => d.required).length * applicants.length
+        : requiredDocCount;
+
     return (
         <div style={{ display: 'flex', gap: 32, maxWidth: 1200, margin: '0 auto', padding: '32px 24px', minHeight: 'calc(100vh - 64px)' }}>
             {/* Left: Chat */}
             <div style={{ flex: '0 0 63%', maxWidth: '63%' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
                     <h1 style={{ fontFamily: T.fontDisplay, fontSize: 28, fontWeight: 400 }}>Tell us about your family</h1>
-                    <button onClick={() => { setChatHistory([]); setChainNodes([]); setCurrentQ(null); setShowSummary(false); setShowEligibility(false); setGenCount(0); setTimeout(() => showQuestion('born_where'), 100); }} style={{ fontSize: 13, color: T.textMut, background: 'none', border: 'none', cursor: 'pointer' }}>↺ Start Over</button>
+                    <button onClick={() => { setChatHistory([]); setChainNodes([]); setCurrentQ(null); setShowSummary(false); setShowApplicantForm(false); setShowEligibility(false); setGenCount(0); setTimeout(() => showQuestion('born_where'), 100); }} style={{ fontSize: 13, color: T.textMut, background: 'none', border: 'none', cursor: 'pointer' }}>↺ Start Over</button>
                 </div>
 
                 <div style={{ paddingBottom: 24 }}>
@@ -326,6 +491,15 @@ export default function IntakeScreen() {
                         </div>
                     )}
 
+                    {/* Applicant details form (family flow, shown after chain questions) */}
+                    {showApplicantForm && !showSummary && (
+                        <ApplicantDetailsForm
+                            count={additionalApplicantCount}
+                            onSubmit={handleApplicantDetailsSubmit}
+                            primaryLastName={client.lastName}
+                        />
+                    )}
+
                     {/* Summary card */}
                     {showSummary && (
                         <div className="animate-fade-in-up" style={{ marginTop: 24 }}>
@@ -356,8 +530,11 @@ export default function IntakeScreen() {
                                 ))}
                                 <div style={{ marginTop: 20, padding: '14px 18px', background: T.accentPale, borderRadius: T.radiusSm }}>
                                     <p style={{ fontSize: 14, color: T.accent, lineHeight: 1.6 }}>
-                                        Based on what you've told us, you appear to be eligible for Canadian citizenship by descent through your <strong>{canadianParent || 'parent'}</strong>.
-                                        We'll need <strong>{requiredDocCount} documents</strong> to verify your chain — you can upload them at your own pace.
+                                        {currentIsFamily ? (
+                                            <>Based on what you've told us, <strong>all {applicants.length} applicants</strong> appear to be eligible for Canadian citizenship by descent through your <strong>{canadianParent || 'parent'}</strong>. We'll need <strong>{familyDocCount} documents total</strong> to complete your family's applications — you can upload them at your own pace.</>
+                                        ) : (
+                                            <>Based on what you've told us, you appear to be eligible for Canadian citizenship by descent through your <strong>{canadianParent || 'parent'}</strong>. We'll need <strong>{requiredDocCount} documents</strong> to verify your chain — you can upload them at your own pace.</>
+                                        )}
                                     </p>
                                 </div>
                             </div>

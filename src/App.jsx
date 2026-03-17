@@ -121,8 +121,11 @@ function StepBar() {
 
 function Header() {
   const { state, dispatch } = useApp();
+  const [showSwitcher, setShowSwitcher] = useState(false);
   const showStepBar = !['sales', 'welcome'].includes(state.screen) && state.screen !== 'cmDashboard';
   const showHeader = state.screen !== 'sales' && state.screen !== 'cmDashboard';
+  const isFamily = state.applicants.length > 1 || state.additionalApplicantCount > 0;
+  const totalApplicants = Math.max(state.applicants.length, 1 + (state.additionalApplicantCount || 0));
 
   if (!showHeader) return null;
 
@@ -145,8 +148,76 @@ function Header() {
       {showStepBar && <StepBar />}
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-        {state.client.firstName && (
-          <span style={{ fontSize: 13, color: T.textSec }}>{state.client.firstName} {state.client.lastName}</span>
+        {/* Applicant Switcher (family mode only) */}
+        {isFamily && state.client.firstName ? (
+          <div style={{ position: 'relative' }}>
+            <button
+              onClick={() => setShowSwitcher(!showSwitcher)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                padding: '6px 14px', borderRadius: 8,
+                border: `1px solid ${T.bgWarm}`, background: T.bg,
+                fontSize: 13, fontWeight: 600, color: T.text,
+                cursor: 'pointer', transition: 'all 0.2s',
+              }}
+            >
+              {state.client.firstName} {state.client.lastName}
+              <span style={{ fontSize: 10, color: T.textMut }}>▾</span>
+              <span style={{ fontSize: 11, background: T.accentPale, color: T.accent, padding: '2px 8px', borderRadius: 10, fontWeight: 700 }}>
+                {totalApplicants}
+              </span>
+            </button>
+            {showSwitcher && (
+              <>
+                <div style={{ position: 'fixed', inset: 0, zIndex: 199 }} onClick={() => setShowSwitcher(false)} />
+                <div style={{
+                  position: 'absolute', top: '100%', right: 0, marginTop: 6,
+                  background: T.card, borderRadius: T.radius, border: `1px solid ${T.bgWarm}`,
+                  boxShadow: '0 8px 32px rgba(0,0,0,0.12)', minWidth: 260, zIndex: 200,
+                  overflow: 'hidden',
+                }} className="animate-fade-in">
+                  <div style={{ padding: '10px 16px', borderBottom: `1px solid ${T.bgWarm}` }}>
+                    <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: T.textMut }}>
+                      {state.client.lastName} Family — {totalApplicants} applicants
+                    </p>
+                  </div>
+                  {state.applicants.map(a => (
+                    <button
+                      key={a.id}
+                      onClick={() => {
+                        dispatch({ type: 'SET_ACTIVE_APPLICANT', id: a.id });
+                        setShowSwitcher(false);
+                      }}
+                      style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        width: '100%', padding: '10px 16px',
+                        border: 'none', background: a.id === state.activeApplicantId ? T.accentPale : 'transparent',
+                        cursor: 'pointer', transition: 'background 0.15s',
+                        textAlign: 'left',
+                      }}
+                      onMouseOver={e => e.currentTarget.style.background = T.accentPale}
+                      onMouseOut={e => e.currentTarget.style.background = a.id === state.activeApplicantId ? T.accentPale : 'transparent'}
+                    >
+                      <div>
+                        <p style={{ fontSize: 14, fontWeight: 600, color: T.text }}>{a.firstName} {a.lastName}</p>
+                        <p style={{ fontSize: 12, color: T.textMut }}>
+                          {a.relationship === 'self' ? 'Primary' : a.relationship}
+                          {a.isMinor && <span style={{ color: T.maple, marginLeft: 6, fontWeight: 700 }}>Minor</span>}
+                        </p>
+                      </div>
+                      {a.id === state.activeApplicantId && (
+                        <span style={{ fontSize: 11, color: T.accent, fontWeight: 700 }}>Active</span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        ) : (
+          state.client.firstName && (
+            <span style={{ fontSize: 13, color: T.textSec }}>{state.client.firstName} {state.client.lastName}</span>
+          )
         )}
         <button
           onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'cmDashboard' })}

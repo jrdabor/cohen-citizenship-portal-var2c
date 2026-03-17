@@ -16,6 +16,11 @@ const initialState = {
         languagePreference: 'English', certificateType: 'Paper', uciNumber: 'NA',
         wantsNameChange: false, birthCertChanged: false, birthCertExplanation: '',
     },
+    // Family support
+    additionalApplicantCount: 0,  // set on Sales screen (count only, details come from Intake)
+    applicants: [],           // [{id, firstName, lastName, dob, relationship, isMinor, documents:{}, confirmEdits:{}, reviewFlags:[], status:'gather'}]
+    activeApplicantId: 'primary',
+    sharedDocuments: {},      // family docs (parent certs, GP certs, marriage certs)
     intake: {
         answers: {},
         currentQuestionIndex: 0,
@@ -38,6 +43,7 @@ const initialState = {
     review: {
         status: 'none', // none | checking | waiting | changes_requested | approved
         flags: [],
+        sharedFlags: [],
         checkStep: 0,
     },
     messages: [],
@@ -60,6 +66,15 @@ function reducer(state, action) {
         case 'SET_CLIENT': {
             return { ...state, client: { ...state.client, ...action.data } };
         }
+        case 'SET_ADDITIONAL_COUNT': {
+            return { ...state, additionalApplicantCount: action.count };
+        }
+        case 'SET_APPLICANTS': {
+            return { ...state, applicants: action.data };
+        }
+        case 'SET_ACTIVE_APPLICANT': {
+            return { ...state, activeApplicantId: action.id };
+        }
         case 'SET_INTAKE': {
             return { ...state, intake: { ...state.intake, ...action.data } };
         }
@@ -77,8 +92,28 @@ function reducer(state, action) {
             const docs = { ...state.documents, [action.docId]: { ...action.data, uploadedAt: new Date().toISOString() } };
             return { ...state, documents: docs };
         }
+        case 'UPLOAD_SHARED_DOC': {
+            const sharedDocs = { ...state.sharedDocuments, [action.docId]: { ...action.data, uploadedAt: new Date().toISOString() } };
+            return { ...state, sharedDocuments: sharedDocs };
+        }
+        case 'UPLOAD_APPLICANT_DOC': {
+            const applicants = state.applicants.map(a =>
+                a.id === action.applicantId
+                    ? { ...a, documents: { ...a.documents, [action.docId]: { ...action.data, uploadedAt: new Date().toISOString() } } }
+                    : a
+            );
+            return { ...state, applicants };
+        }
         case 'SET_CONFIRM_EDIT': {
             return { ...state, confirmEdits: { ...state.confirmEdits, [action.field]: action.value } };
+        }
+        case 'SET_APPLICANT_CONFIRM_EDIT': {
+            const applicants = state.applicants.map(a =>
+                a.id === action.applicantId
+                    ? { ...a, confirmEdits: { ...a.confirmEdits, [action.field]: action.value } }
+                    : a
+            );
+            return { ...state, applicants };
         }
         case 'SET_REVIEW': {
             return { ...state, review: { ...state.review, ...action.data } };
@@ -87,8 +122,14 @@ function reducer(state, action) {
             return { ...state, messages: [...state.messages, { ...action.msg, id: Date.now(), createdAt: new Date().toISOString() }] };
         }
         case 'RESOLVE_FLAG': {
+            // Handle both old-style flat flags and family-style (shared + per-applicant)
             const flags = state.review.flags.map(f => f.id === action.id ? { ...f, status: 'resolved' } : f);
-            return { ...state, review: { ...state.review, flags } };
+            const sharedFlags = (state.review.sharedFlags || []).map(f => f.id === action.id ? { ...f, status: 'resolved' } : f);
+            const applicants = state.applicants.map(a => ({
+                ...a,
+                reviewFlags: (a.reviewFlags || []).map(f => f.id === action.id ? { ...f, status: 'resolved' } : f),
+            }));
+            return { ...state, review: { ...state.review, flags, sharedFlags }, applicants };
         }
         case 'SET_STATE': {
             return { ...state, ...action.data };

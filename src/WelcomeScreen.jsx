@@ -6,6 +6,8 @@ import { LeafIcon, ChatIcon, UploadIcon, ShieldIcon, ArrowRight } from './Icons.
 export default function WelcomeScreen() {
     const { state, dispatch } = useApp();
     const name = state.client.firstName || 'there';
+    const isFamily = state.applicants.length > 1 || state.additionalApplicantCount > 0;
+    const totalApplicants = Math.max(state.applicants.length, 1 + (state.additionalApplicantCount || 0));
 
     const steps = [
         { icon: <ChatIcon size={22} color={T.accent} />, title: 'Tell us your story', desc: 'A few questions to map your path to citizenship. ~5 minutes.' },
@@ -24,12 +26,19 @@ export default function WelcomeScreen() {
                 {/* Welcome badge */}
                 <div style={{ marginBottom: 16 }}>
                     <span style={{ fontSize: 15, fontWeight: 500, color: T.warn, background: T.warnBg, padding: '6px 16px', borderRadius: 20, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                        ★ Welcome, {name}
+                        ★ Welcome, {isFamily ? `${state.client.lastName} Family` : name}
                     </span>
                 </div>
 
+                {/* Family subtitle */}
+                {isFamily && (
+                    <p style={{ fontSize: 14, color: T.textSec, marginBottom: 8 }}>
+                        Family application — {totalApplicants} applicants
+                    </p>
+                )}
+
                 {/* Hero */}
-                <h1 style={{ ...S.h1, fontSize: 48, marginBottom: 16 }}>Trace your family's connection to Canada</h1>
+                <h1 style={{ ...S.h1, fontSize: 48, marginBottom: 16 }}>Trace {isFamily ? "your family's" : 'your'} connection to Canada</h1>
                 <p style={{ fontSize: 18, color: T.textSec, lineHeight: 1.6, maxWidth: 560, margin: '0 auto 40px' }}>
                     As a Canadian citizen by descent, you already hold citizenship — this application provides the official proof. We'll handle the paperwork.
                 </p>
